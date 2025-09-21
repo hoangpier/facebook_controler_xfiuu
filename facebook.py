@@ -43,7 +43,7 @@ bot_status = {
 
 def create_driver():
     """Khởi tạo trình duyệt Chrome ở chế độ headless cho Render."""
-    print("INFO: Khởi tạo trình duyệt Chrome ở chế độ Headless...")
+    print("INFO: Khởi tạo trình duyệt Chrome ở chế độ Headless...", flush=True)
     options = webdriver.ChromeOptions()
     options.add_argument("--headless")
     options.add_argument("--no-sandbox")
@@ -55,23 +55,23 @@ def create_driver():
     chromedriver_path = os.environ.get("CHROMEDRIVER_PATH")
 
     if not options.binary_location or not chromedriver_path:
-        print("LỖI: Không tìm thấy GOOGLE_CHROME_BIN hoặc CHROMEDRIVER_PATH.")
-        print("Bạn đã thêm Buildpacks cho Chrome và Chromedriver chưa?")
+        print("LỖI: Không tìm thấy GOOGLE_CHROME_BIN hoặc CHROMEDRIVER_PATH.", flush=True)
+        print("Bạn đã thêm Buildpacks cho Chrome và Chromedriver chưa?", flush=True)
         return None
     try:
         s = Service(chromedriver_path)
         driver = webdriver.Chrome(service=s, options=options)
         return driver
     except Exception as e:
-        print(f"LỖI: Không thể khởi động WebDriver: {e}")
+        print(f"LỖI: Không thể khởi động WebDriver: {e}", flush=True)
         return None
 
 def login_with_cookie(driver, cookie_file):
     """Đăng nhập vào Facebook bằng cookie."""
-    print(f"INFO: Đang đăng nhập bằng cookie từ tệp: {cookie_file}")
+    print(f"INFO: Đang đăng nhập bằng cookie từ tệp: {cookie_file}", flush=True)
     if not os.path.exists(cookie_file):
-        print(f"LỖI: Không tìm thấy tệp cookie '{cookie_file}'.")
-        print("Bạn đã cấu hình 'Secret File' trên Render chưa?")
+        print(f"LỖI: Không tìm thấy tệp cookie '{cookie_file}'.", flush=True)
+        print("Bạn đã cấu hình 'Secret File' trên Render chưa?", flush=True)
         return False
     try:
         with open(cookie_file, 'r') as f: cookies = json.load(f)
@@ -83,17 +83,17 @@ def login_with_cookie(driver, cookie_file):
         driver.refresh()
         time.sleep(3) 
         if "checkpoint" in driver.current_url:
-            print("LỖI: Đăng nhập thất bại. Tài khoản có thể bị checkpoint.")
+            print("LỖI: Đăng nhập thất bại. Tài khoản có thể bị checkpoint.", flush=True)
             return False
-        print("INFO: Đăng nhập thành công!")
+        print("INFO: Đăng nhập thành công!", flush=True)
         return True
     except Exception as e:
-        print(f"LỖI: Đã xảy ra lỗi khi đăng nhập: {e}")
+        print(f"LỖI: Đã xảy ra lỗi khi đăng nhập: {e}", flush=True)
         return False
 
 def post_to_wall(driver, content):
     """Đăng bài viết lên tường cá nhân."""
-    print(f"INFO: Chuẩn bị đăng bài: '{content[:20]}...'")
+    print(f"INFO: Chuẩn bị đăng bài: '{content[:20]}...'", flush=True)
     try:
         driver.get(BASE_URL)
         time.sleep(3)
@@ -103,21 +103,21 @@ def post_to_wall(driver, content):
             time.sleep(2)
             post_button = driver.find_element(By.XPATH, "//button[@value='Post']")
             post_button.click()
-            print("INFO: Đăng bài thành công!")
+            print("INFO: Đăng bài thành công!", flush=True)
             time.sleep(5) 
             return "Đăng bài thành công!"
         except NoSuchElementException:
-            print("LỖI: Không tìm thấy ô đăng bài hoặc nút 'Post'. Giao diện Facebook có thể đã thay đổi.")
+            print("LỖI: Không tìm thấy ô đăng bài hoặc nút 'Post'. Giao diện Facebook có thể đã thay đổi.", flush=True)
             return "Lỗi: Không tìm thấy ô đăng bài."
     except Exception as e:
-        print(f"LỖI: Đã xảy ra lỗi khi đăng bài: {e}")
+        print(f"LỖI: Đã xảy ra lỗi khi đăng bài: {e}", flush=True)
         return f"Lỗi: {e}"
 
 def run_facebook_bot():
     """Vòng lặp bot chạy nền (trong thread)."""
     global bot_status, lock
     
-    print("INFO: Luồng (thread) bot Facebook đã khởi động.")
+    print("INFO: Luồng (thread) bot Facebook đã khởi động.", flush=True)
     
     while True:
         # Lấy trạng thái hiện tại một cách an toàn
@@ -132,7 +132,7 @@ def run_facebook_bot():
             continue
         
         # Nếu bot được BẬT, thực hiện một lượt chạy
-        print(f"\n[{time.strftime('%Y-%m-%d %H:%M:%S')}] Bắt đầu một lượt chạy bot...")
+        print(f"\n[{time.strftime('%Y-%m-%d %H:%M:%S')}] Bắt đầu một lượt chạy bot...", flush=True)
         bot_driver = None
         run_message = "Chưa khởi động"
         
@@ -144,14 +144,15 @@ def run_facebook_bot():
                 else:
                     run_message = "Lỗi: Đăng nhập thất bại (Checkpoint?)."
                 
-                print("INFO: Lượt chạy hoàn tất. Đóng trình duyệt.")
+                print("INFO: Lượt chạy hoàn tất. Đóng trình duyệt.", flush=True)
                 bot_driver.quit()
             else:
                 run_message = "Lỗi: Không thể tạo driver."
+                print(run_message, flush=True)
 
         except Exception as e:
             run_message = f"Lỗi nghiêm trọng: {e}"
-            print(f"LỖI NGHIÊM TRỌNG: {e}")
+            print(f"LỖI NGHIÊM TRỌNG: {e}", flush=True)
             if bot_driver:
                 bot_driver.quit()
         
@@ -159,8 +160,15 @@ def run_facebook_bot():
         with lock:
             bot_status["last_run_status"] = f"[{time.strftime('%H:%M:%S')}] {run_message}"
         
-        print(f"INFO: Bot sẽ nghỉ trong {delay} giây...")
-        time.sleep(delay)
+        print(f"INFO: Bot sẽ nghỉ trong {delay} giây...", flush=True)
+        # Chờ delay, nhưng kiểm tra `is_running` mỗi 5 giây
+        # để có thể dừng bot nhanh hơn
+        for _ in range(delay // 5):
+            with lock:
+                if not bot_status["is_bot_running"]:
+                    print("INFO: Bot đã bị dừng trong lúc nghỉ.", flush=True)
+                    break
+            time.sleep(5)
 
 # ===================================================================
 # MÁY CHỦ WEB FLASK (Để điều khiển)
@@ -293,10 +301,10 @@ def toggle_bot():
         bot_status["delay_seconds"] = data.get("delay", 3600)
         
         if bot_status["is_bot_running"]:
-            print(f"[CONTROL] Nhận lệnh BẬT bot. Delay: {bot_status['delay_seconds']}s")
+            print(f"[CONTROL] Nhận lệnh BẬT bot. Delay: {bot_status['delay_seconds']}s", flush=True)
             bot_status["last_run_status"] = "Đã nhận lệnh BẬT, chờ lượt chạy tiếp theo..."
         else:
-            print("[CONTROL] Nhận lệnh TẮT bot.")
+            print("[CONTROL] Nhận lệnh TẮT bot.", flush=True)
             bot_status["last_run_status"] = "Đã nhận lệnh TẮT."
             
     return jsonify({"status": "ok"})
@@ -307,12 +315,12 @@ def toggle_bot():
 
 # 1. Khởi động luồng (thread) bot Facebook
 # PHẢI ĐỂ BÊN NGOÀI __main__ để Gunicorn có thể chạy nó
-print("[INIT] Khởi động luồng bot Facebook (chạy nền)...")
+print("[INIT] Khởi động luồng bot Facebook (chạy nền)...", flush=True)
 fb_thread = threading.Thread(target=run_facebook_bot, daemon=True)
 fb_thread.start()
 
 if __name__ == "__main__":
     # 2. Khởi động máy chủ web Flask (chỉ dùng khi chạy local)
     port = int(os.environ.get("PORT", 10000))
-    print(f"[SERVER] Khởi động Web Server tại http://0.0.0.0:{port}")
+    print(f"[SERVER] Khởi động Web Server tại http://0.0.0.0:{port}", flush=True)
     app.run(host="0.0.0.0", port=port, debug=False)
