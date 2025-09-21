@@ -38,7 +38,7 @@ bot_status = {
 }
 
 # ===================================================================
-# LOGIC BOT SELENIUM (Không thay đổi, giữ nguyên như trước)
+# LOGIC BOT SELENIUM (Sẽ chạy trong một luồng riêng)
 # ===================================================================
 
 def create_driver():
@@ -56,6 +56,7 @@ def create_driver():
 
     if not options.binary_location or not chromedriver_path:
         print("LỖI: Không tìm thấy GOOGLE_CHROME_BIN hoặc CHROMEDRIVER_PATH.")
+        print("Bạn đã thêm Buildpacks cho Chrome và Chromedriver chưa?")
         return None
     try:
         s = Service(chromedriver_path)
@@ -67,9 +68,10 @@ def create_driver():
 
 def login_with_cookie(driver, cookie_file):
     """Đăng nhập vào Facebook bằng cookie."""
-    print("INFO: Đang đăng nhập bằng cookie...")
+    print(f"INFO: Đang đăng nhập bằng cookie từ tệp: {cookie_file}")
     if not os.path.exists(cookie_file):
         print(f"LỖI: Không tìm thấy tệp cookie '{cookie_file}'.")
+        print("Bạn đã cấu hình 'Secret File' trên Render chưa?")
         return False
     try:
         with open(cookie_file, 'r') as f: cookies = json.load(f)
@@ -105,7 +107,7 @@ def post_to_wall(driver, content):
             time.sleep(5) 
             return "Đăng bài thành công!"
         except NoSuchElementException:
-            print("LỖI: Không tìm thấy ô đăng bài hoặc nút 'Post'.")
+            print("LỖI: Không tìm thấy ô đăng bài hoặc nút 'Post'. Giao diện Facebook có thể đã thay đổi.")
             return "Lỗi: Không tìm thấy ô đăng bài."
     except Exception as e:
         print(f"LỖI: Đã xảy ra lỗi khi đăng bài: {e}")
@@ -118,15 +120,18 @@ def run_facebook_bot():
     print("INFO: Luồng (thread) bot Facebook đã khởi động.")
     
     while True:
+        # Lấy trạng thái hiện tại một cách an toàn
         with lock:
             is_running = bot_status["is_bot_running"]
             content = bot_status["post_content"]
             delay = bot_status["delay_seconds"]
 
         if not is_running:
+            # Nếu bot bị tắt, chỉ cần nghỉ và kiểm tra lại
             time.sleep(5)
             continue
         
+        # Nếu bot được BẬT, thực hiện một lượt chạy
         print(f"\n[{time.strftime('%Y-%m-%d %H:%M:%S')}] Bắt đầu một lượt chạy bot...")
         bot_driver = None
         run_message = "Chưa khởi động"
@@ -150,6 +155,7 @@ def run_facebook_bot():
             if bot_driver:
                 bot_driver.quit()
         
+        # Cập nhật trạng thái lần chạy cuối
         with lock:
             bot_status["last_run_status"] = f"[{time.strftime('%H:%M:%S')}] {run_message}"
         
@@ -157,7 +163,7 @@ def run_facebook_bot():
         time.sleep(delay)
 
 # ===================================================================
-# MÁY CHỦ WEB FLASK (Không thay đổi, giữ nguyên như trước)
+# MÁY CHỦ WEB FLASK (Để điều khiển)
 # ===================================================================
 
 app = Flask(__name__)
@@ -296,14 +302,17 @@ def toggle_bot():
     return jsonify({"status": "ok"})
 
 # ===================================================================
-# KHỞI CHẠY (Không thay đổi, giữ nguyên như trước)
+# KHỞI CHẠY (ĐÃ SỬA LỖI CHO GUNICORN)
 # ===================================================================
+
+# 1. Khởi động luồng (thread) bot Facebook
+# PHẢI ĐỂ BÊN NGOÀI __main__ để Gunicorn có thể chạy nó
+print("[INIT] Khởi động luồng bot Facebook (chạy nền)...")
+fb_thread = threading.Thread(target=run_facebook_bot, daemon=True)
+fb_thread.start()
+
 if __name__ == "__main__":
-    # 1. Khởi động luồng (thread) bot Facebook
-    fb_thread = threading.Thread(target=run_facebook_bot, daemon=True)
-    fb_thread.start()
-    
-    # 2. Khởi động máy chủ web Flask
+    # 2. Khởi động máy chủ web Flask (chỉ dùng khi chạy local)
     port = int(os.environ.get("PORT", 10000))
     print(f"[SERVER] Khởi động Web Server tại http://0.0.0.0:{port}")
     app.run(host="0.0.0.0", port=port, debug=False)
